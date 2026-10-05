@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# File contains api key
+.env
+
 # Database
 *.db
 

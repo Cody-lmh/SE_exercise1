@@ -8,6 +8,7 @@ A modern, responsive web application for managing personal notes with a beautifu
 - **Edit Notes**: Update existing notes with real-time editing
 - **Delete Notes**: Remove notes you no longer need
 - **Search Notes**: Find notes quickly by searching titles and content
+- **Translate Notes**: Translate the content of the open note into Chinese (Simplified) with one click
 - **Auto-save**: Notes are automatically saved as you type
 - **Responsive Design**: Works perfectly on desktop and mobile devices
 - **Modern UI**: Beautiful gradient design with smooth animations
@@ -42,7 +43,10 @@ notetaking-app/
 │   │   └── note.py          # Note model with database schema
 │   ├── routes/
 │   │   ├── user.py          # User API routes (template)
-│   │   └── note.py          # Note API endpoints
+│   │   ├── note.py          # Note API endpoints
+│   │   └── translate.py     # Translation API endpoint
+│   ├── services/
+│   │   └── translator.py    # MyMemory translation client (chunking + error handling)
 │   ├── static/
 │   │   ├── index.html       # Frontend application
 │   │   └── favicon.ico      # Application icon
@@ -96,6 +100,29 @@ notetaking-app/
 - `PUT /api/notes/<id>` - Update a note
 - `DELETE /api/notes/<id>` - Delete a note
 - `GET /api/notes/search?q=<query>` - Search notes
+
+### Translation API
+- `POST /api/translate` - Translate text into a supported target language
+
+Request body:
+```json
+{
+  "content": "Hello, how are you?",
+  "target_lang": "zh-CN"
+}
+```
+
+Response:
+```json
+{
+  "source_content": "Hello, how are you?",
+  "translated_content": "你好，你好吗？",
+  "target_lang": "zh-CN"
+}
+```
+
+Supported `target_lang` values: `zh-CN` (Chinese, Simplified - default), `zh-TW` (Chinese, Traditional), `en` (English).
+Translation is powered by the free [MyMemory](https://mymemory.translated.net/) API, which requires no API key; notes longer than 500 characters are chunked automatically.
 
 ### Request/Response Format
 ```json
