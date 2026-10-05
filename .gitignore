@@ -9,6 +9,8 @@ __pycache__/
 # Database
 *.db
 
+# AI agent file
+.Agent.md
 
 # C extensions
 *.so
@@ -113,3 +115,6 @@ Thumbs.db
 .coverage
 coverage.xml
 *.prof
+
+# Vercel
+.vercel

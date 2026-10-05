@@ -176,7 +176,24 @@ The application is configured for easy deployment with:
 - CORS enabled for cross-origin requests
 - Host binding to `0.0.0.0` for external access
 - Production-ready Flask configuration
-- Persistent SQLite database
+- SQLite database (see the Vercel note below)
+
+### ▲ Deploying to Vercel
+
+The repository ships with a Vercel entrypoint at `api/index.py` and a `vercel.json`
+that routes every request to the Flask app.
+
+1. Install the CLI: `npm i -g vercel`
+2. From the repository root, deploy:
+   ```bash
+   vercel         # preview deployment
+   vercel --prod  # production deployment
+   ```
+
+Notes:
+- `requirements.txt` at the repository root is installed automatically as the function's dependencies.
+- There is **no API key** to configure; translation uses the free MyMemory API.
+- Vercel's filesystem is read-only except `/tmp`, so when the `VERCEL` environment variable is present the app stores SQLite at `/tmp/app.db`. That file is **ephemeral** — notes are lost when the function cold-starts or scales out. For durable storage, set the `SQLALCHEMY_DATABASE_URI` environment variable to a hosted database (e.g. Vercel Postgres) and add the matching driver to `requirements.txt`.
 
 ## 🔧 Configuration
 
