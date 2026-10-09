@@ -92,7 +92,6 @@ celerybeat-schedule
 
 # dotenv
 .env
-.env.*
 
 # mypy
 .mypy_cache/

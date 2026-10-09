@@ -440,7 +440,7 @@
                 
                 try {
                     const response = await fetch('/api/notes');
-                    if (!response.ok) throw new Error('Failed to load notes');
+                    if (!response.ok) throw new Error(await this.responseError(response, 'Failed to load notes'));
                     
                     this.notes = await response.json();
                     this.renderNotesList();
@@ -557,7 +557,7 @@
                         });
                     }
 
-                    if (!response.ok) throw new Error('Failed to save note');
+                    if (!response.ok) throw new Error(await this.responseError(response, 'Failed to save note'));
 
                     const savedNote = await response.json();
                     this.currentNote = savedNote;
@@ -631,7 +631,7 @@
                         method: 'DELETE'
                     });
 
-                    if (!response.ok) throw new Error('Failed to delete note');
+                    if (!response.ok) throw new Error(await this.responseError(response, 'Failed to delete note'));
 
                     // Remove from notes array
                     this.notes = this.notes.filter(n => n.id !== this.currentNote.id);
@@ -664,6 +664,12 @@
                         <div class="note-date">${this.formatDate(note.updated_at)}</div>
                     </div>
                 `).join('');
+            }
+
+            async responseError(response, fallback) {
+                // Show the server's explanation instead of a generic message.
+                const data = await response.json().catch(() => null);
+                return (data && data.error) ? data.error : fallback;
             }
 
             showMessage(message, type) {

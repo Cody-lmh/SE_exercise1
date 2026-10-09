@@ -1,65 +1,63 @@
 from flask import Blueprint, jsonify, request
-from src.models.note import Note, db
+
+from src.db import error_message
+from src.models import note as note_repo
 
 note_bp = Blueprint('note', __name__)
 
 @note_bp.route('/notes', methods=['GET'])
 def get_notes():
     """Get all notes, ordered by most recently updated"""
-    notes = Note.query.order_by(Note.updated_at.desc()).all()
-    return jsonify([note.to_dict() for note in notes])
+    return jsonify(note_repo.list_notes())
 
 @note_bp.route('/notes', methods=['POST'])
 def create_note():
     """Create a new note"""
     try:
-        data = request.json
+        data = request.get_json(silent=True)
         if not data or 'title' not in data or 'content' not in data:
             return jsonify({'error': 'Title and content are required'}), 400
-        
-        note = Note(title=data['title'], content=data['content'])
-        db.session.add(note)
-        db.session.commit()
-        return jsonify(note.to_dict()), 201
+
+        note = note_repo.create_note(data['title'], data['content'])
+        return jsonify(note), 201
     except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': error_message(e)}), 500
 
 @note_bp.route('/notes/<int:note_id>', methods=['GET'])
 def get_note(note_id):
     """Get a specific note by ID"""
-    note = Note.query.get_or_404(note_id)
-    return jsonify(note.to_dict())
+    try:
+        note = note_repo.get_note(note_id)
+        if note is None:
+            return jsonify({'error': 'Note not found'}), 404
+        return jsonify(note)
+    except Exception as e:
+        return jsonify({'error': error_message(e)}), 500
 
 @note_bp.route('/notes/<int:note_id>', methods=['PUT'])
 def update_note(note_id):
     """Update a specific note"""
     try:
-        note = Note.query.get_or_404(note_id)
-        data = request.json
-        
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({'error': 'No data provided'}), 400
-        
-        note.title = data.get('title', note.title)
-        note.content = data.get('content', note.content)
-        db.session.commit()
-        return jsonify(note.to_dict())
+
+        note = note_repo.update_note(note_id, data)
+        if note is None:
+            return jsonify({'error': 'Note not found'}), 404
+        return jsonify(note)
     except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': error_message(e)}), 500
 
 @note_bp.route('/notes/<int:note_id>', methods=['DELETE'])
 def delete_note(note_id):
     """Delete a specific note"""
     try:
-        note = Note.query.get_or_404(note_id)
-        db.session.delete(note)
-        db.session.commit()
+        if not note_repo.delete_note(note_id):
+            return jsonify({'error': 'Note not found'}), 404
         return '', 204
     except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': error_message(e)}), 500
 
 @note_bp.route('/notes/search', methods=['GET'])
 def search_notes():
@@ -67,10 +65,9 @@ def search_notes():
     query = request.args.get('q', '')
     if not query:
         return jsonify([])
-    
-    notes = Note.query.filter(
-        (Note.title.contains(query)) | (Note.content.contains(query))
-    ).order_by(Note.updated_at.desc()).all()
-    
-    return jsonify([note.to_dict() for note in notes])
+
+    try:
+        return jsonify(note_repo.search_notes(query))
+    except Exception as e:
+        return jsonify({'error': error_message(e)}), 500
 

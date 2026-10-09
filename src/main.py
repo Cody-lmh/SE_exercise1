@@ -1,16 +1,15 @@
 import os
 import sys
-import tempfile
 # DON'T CHANGE THIS !!!
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, send_from_directory
+from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
-from src.models.user import db
+from postgrest.exceptions import APIError
+from src.db import SupabaseConfigError, error_message
 from src.routes.user import user_bp
 from src.routes.note import note_bp
 from src.routes.translate import translate_bp
-from src.models.note import Note
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
@@ -22,23 +21,26 @@ CORS(app)
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(note_bp, url_prefix='/api')
 app.register_blueprint(translate_bp, url_prefix='/api')
-# configure database; Vercel's filesystem is read-only except /tmp, so use a
-# writable (ephemeral) location there.
-ROOT_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-if os.environ.get('VERCEL'):
-    DB_PATH = os.path.join(tempfile.gettempdir(), 'app.db')
-else:
-    DB_PATH = os.path.join(ROOT_DIR, 'database', 'app.db')
-# ensure database directory exists
-os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
-    'SQLALCHEMY_DATABASE_URI', f"sqlite:///{DB_PATH}"
-)
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db.init_app(app)
-with app.app_context():
-    db.create_all()
+# Data lives in Supabase; the client is configured from the environment in
+# src/db.py and the schema is created by supabase/migrations.
+@app.errorhandler(SupabaseConfigError)
+def handle_supabase_config_error(error):
+    """Report missing Supabase credentials instead of a bare 500 page."""
+    return jsonify({'error': str(error)}), 500
+
+@app.errorhandler(APIError)
+def handle_postgrest_error(error):
+    """Return PostgREST failures as JSON so the UI can show the real message."""
+    return jsonify({'error': error_message(error)}), 500
+
+if not (os.environ.get('SUPABASE_URL') and os.environ.get('SUPABASE_KEY')):
+    print(
+        'WARNING: SUPABASE_URL and/or SUPABASE_KEY are not set, so every API '
+        'request will fail. Copy .env.example to .env and fill it in, then '
+        'apply supabase/migrations (see README.md).',
+        file=sys.stderr,
+    )
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
